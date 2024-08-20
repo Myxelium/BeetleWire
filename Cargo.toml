@@ -1,0 +1,11 @@
+[package]
+name = "your_project_name"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.15"
+tungstenite = "0.14"
+url = "2.2"
+futures-util = "0.3"
