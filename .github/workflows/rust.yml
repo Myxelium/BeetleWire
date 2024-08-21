@@ -1,85 +1,77 @@
-name: Build and Release
+name: Deploy
 
 on:
   push:
-    branches:
-      - master
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  build-and-upload:
+    name: Build and upload
     runs-on: ${{ matrix.os }}
+
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        target: [x86_64-unknown-linux-gnu, x86_64-apple-darwin, x86_64-pc-windows-gnu]
+        # You can add more, for any target you'd like!
         include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-          - os: macos-latest
+          - build: linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+
+          - build: macos
+            os: macos-latest
             target: x86_64-apple-darwin
-          - os: windows-latest
-            target: x86_64-pc-windows-gnu
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v3
 
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+      - name: Get the release version from the tag
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Install Rust
+        # Or @nightly if you want
+        uses: dtolnay/rust-toolchain@stable
+        # Arguments to pass in
         with:
-          toolchain: stable
+          # Make Rust compile to our target (defined in the matrix)
+          targets: ${{ matrix.target }}
 
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions-rs/cargo@v1
         with:
-          name: ${{ matrix.os }}-binary
-          path: target/${{ matrix.target }}/release/your_binary_name
+          use-cross: true
+          command: build
+          args: --verbose --release --target ${{ matrix.target }}
 
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Build archive
+        shell: bash
+        run: |
+          # Replace with the name of your binary
+          binary_name="BeetleWire"
 
-      - name: Get Previous Tag
-        id: previoustag
-        uses: WyriHaximus/github-action-get-previous-tag@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          dirname="$binary_name-${{ env.VERSION }}-${{ matrix.target }}"
+          mkdir "$dirname"
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            mv "target/${{ matrix.target }}/release/$binary_name.exe" "$dirname"
+          else
+            mv "target/${{ matrix.target }}/release/$binary_name" "$dirname"
+          fi
 
-      - name: Get Next SemVer
-        id: semvers
-        uses: WyriHaximus/github-action-next-semvers@v1
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            7z a "$dirname.zip" "$dirname"
+            echo "ASSET=$dirname.zip" >> $GITHUB_ENV
+          else
+            tar -czf "$dirname.tar.gz" "$dirname"
+            echo "ASSET=$dirname.tar.gz" >> $GITHUB_ENV
+          fi
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
         with:
-          version: ${{ steps.previoustag.outputs.tag }}
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v2
-        with:
-          name: ${{ matrix.os }}-binary
-          path: ./artifacts
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.semvers.outputs.v_patch }}
-          release_name: Release ${{ steps.semvers.outputs.v_patch }}
-          draft: false
-          prerelease: false
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifacts
-          asset_name: BeetleWire_${{ matrix.os }}
-          asset_content_type: application/octet-stream
+          files: |
+            ${{ env.ASSET }}
