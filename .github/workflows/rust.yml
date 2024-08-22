@@ -57,9 +57,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Debug previous tag
-        run: echo "Previous tag: ${{ steps.previoustag.outputs.tag }}"
-
       - name: Get next minor version
         id: semver
         uses: 'WyriHaximus/github-action-next-semvers@v1'
