@@ -69,12 +69,6 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: List full build directory
-        run: ls -la ./target/
-        
-      - name: List build directory
-        run: ls -la target/x86_64-pc-windows-gnu/release/
-
       - name: Upload Release Asset (Windows)
         uses: actions/upload-release-asset@v1
         env:
