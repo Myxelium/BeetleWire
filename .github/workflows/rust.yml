@@ -75,7 +75,7 @@ jobs:
           prerelease: false
 
       - name: List full build directory
-        run: ls -la target/
+        run: ls -la ./target/
         
       - name: List build directory
         run: ls -la target/x86_64-pc-windows-gnu/release/
@@ -86,7 +86,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: target/x86_64-pc-windows-gnu/release/BeetleWire.exe
+          asset_path: ./target/x86_64-pc-windows-gnu/release/
           asset_name: BeetleWire.exe
           asset_content_type: application/zip
 
