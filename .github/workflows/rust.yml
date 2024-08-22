@@ -51,13 +51,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Debug previous tag
+        run: echo ${{ steps.previoustag.outputs.tag }}
+
       - name: Get next minor version
         id: semver
         uses: 'WyriHaximus/github-action-next-semvers@v1'
         with:
           version: ${{ steps.previoustag.outputs.tag }}
 
-      - name: Create Release :)
+      - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
